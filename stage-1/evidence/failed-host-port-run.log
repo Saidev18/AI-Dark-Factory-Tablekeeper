@@ -1,0 +1,77 @@
+Original developer HTTP test run, 2026-10-03, exit code 1.
+Provenance: retained from the actual command tool output; no rerun or reconstruction
+of test results was used. Header commentary is added to explain the routing issue.
+
+Command (after creating fresh internal-network service containers):
+cd /home/saidev/ai-dark-factory-tablekeeper/submission/stage-1
+python3 tests/test_http.py
+
+Cause discovered after the run: localhost 18081/18082 still pointed to older
+containers tablekeeper-developer-stage1 and tablekeeper-developer-stage2.
+Docker internal-network services did not expose these host bindings. The suite
+reset older instances' in-memory data. No unrelated container was deleted.
+The final corrected suite used the new service names through container DNS
+on an internal network. One Berlin test expectation was also corrected from
+02:00 to 03:00: 02:30 first occurrence plus 90 absolute minutes ends at 03:00
+after the transition. This log is excluded from passing evidence.
+
+--- Original stdout/stderr ---
+Healthy http://127.0.0.1:18081: 0.021s
+Healthy http://127.0.0.1:18082: 0.015s
+test_50_concurrent_distinct_keys_single_occupant (__main__.HTTPTests.test_50_concurrent_distinct_keys_single_occupant) ... ok
+test_50_concurrent_same_key_exactly_one_create (__main__.HTTPTests.test_50_concurrent_same_key_exactly_one_create) ... 50 identical requests: 0.067s
+ok
+test_batch_different_restaurants_and_foreign_tables (__main__.HTTPTests.test_batch_different_restaurants_and_foreign_tables) ... ok
+test_batch_error_precedence_cutoff_and_overlap (__main__.HTTPTests.test_batch_error_precedence_cutoff_and_overlap) ... ok
+test_batch_shape_ownership_capacity_and_atomic_rollback (__main__.HTTPTests.test_batch_shape_ownership_capacity_and_atomic_rollback) ... ok
+test_batch_swap_noop_replay_and_failed_key_reuse (__main__.HTTPTests.test_batch_swap_noop_replay_and_failed_key_reuse) ... ok
+test_concurrent_batch_receipt_and_patch_contention (__main__.HTTPTests.test_concurrent_batch_receipt_and_patch_contention) ... ok
+test_dst_both_zones_spring_and_fall (__main__.HTTPTests.test_dst_both_zones_spring_and_fall) ... 
+  test_dst_both_zones_spring_and_fall (__main__.HTTPTests.test_dst_both_zones_spring_and_fall) (zone='Europe/Berlin') ... FAIL
+test_half_open_overlap_visibility_and_sorting (__main__.HTTPTests.test_half_open_overlap_visibility_and_sorting) ... ok
+test_past_bookings_seed_and_cutoff_current_start (__main__.HTTPTests.test_past_bookings_seed_and_cutoff_current_start) ... ok
+test_patch_cancel_and_failed_atomic_amendment (__main__.HTTPTests.test_patch_cancel_and_failed_atomic_amendment) ... ok
+test_portable_import_replaces_and_preserves_original_receipts (__main__.HTTPTests.test_portable_import_replaces_and_preserves_original_receipts) ... FAIL
+test_public_browsing_and_closed_days (__main__.HTTPTests.test_public_browsing_and_closed_days) ... ok
+test_replays_ordering_scopes_and_immutable_receipts (__main__.HTTPTests.test_replays_ordering_scopes_and_immutable_receipts) ... ok
+test_signup_login_sessions_and_password_hashes (__main__.HTTPTests.test_signup_login_sessions_and_password_hashes) ... ERROR
+test_validation_and_types (__main__.HTTPTests.test_validation_and_types) ... ok
+
+======================================================================
+ERROR: test_signup_login_sessions_and_password_hashes (__main__.HTTPTests.test_signup_login_sessions_and_password_hashes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/saidev/ai-dark-factory-tablekeeper/submission/stage-1/tests/test_http.py", line 104, in test_signup_login_sessions_and_password_hashes
+    self.assertEqual(user["password_hash"]["algorithm"], "scrypt")
+                     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TypeError: string indices must be integers, not 'str'
+
+======================================================================
+FAIL: test_dst_both_zones_spring_and_fall (__main__.HTTPTests.test_dst_both_zones_spring_and_fall) (zone='Europe/Berlin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/saidev/ai-dark-factory-tablekeeper/submission/stage-1/tests/test_http.py", line 230, in test_dst_both_zones_spring_and_fall
+    self.assertTrue(created["ends_at"].endswith(end), created)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : {'restaurant_id': 'r', 'table_id': 't2', 'party_size': 4, 'starts_at_local': '2026-10-25T02:30', 'starts_at': '2026-10-25T02:30:00+02:00', 'ends_at': '2026-10-25T03:00:00+01:00', 'reservation_id': 'b848a0244a60a162ca104d5ab0cf7171', 'reference': '7B140D81EA', 'status': 'confirmed', 'created_at': '2026-10-03T13:20:46.941854+00:00'}
+
+======================================================================
+FAIL: test_portable_import_replaces_and_preserves_original_receipts (__main__.HTTPTests.test_portable_import_replaces_and_preserves_original_receipts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/saidev/ai-dark-factory-tablekeeper/submission/stage-1/tests/test_http.py", line 323, in test_portable_import_replaces_and_preserves_original_receipts
+    self.assertEqual(request("GET", "/reservations", token=token, base=DESTINATION)[1], original_list)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'res[339 chars]0:00', 'table_ids': ['t1']}, {'restaurant_id':[333 chars]']}]} != {'res[339 chars]0:00'}, {'restaurant_id': 'r', 'table_id': 't2[291 chars]0'}]}
+Diff is 1334 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 16 tests in 3.835s
+
+FAILED (failures=2, errors=1)
+
+--- Earlier network-name preflight failure ---
+Command: docker network create --internal tablekeeper-stage1-test
+Exit code: 1
+Error response from daemon: network with name tablekeeper-stage1-test already exists
+Resolution: use a new developer-specific network, tablekeeper-developer-s1.

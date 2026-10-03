@@ -85,7 +85,8 @@ The mapped-port instance returned 200 `{"status":"ok"}` via Windows
 An initial host-port test attempt hit unrelated older containers already bound
 to 18081/18082. It is excluded from passing evidence. The final full suite used
 unique service names and container DNS on the internal network, avoiding those
-host bindings. Unrelated containers were not removed or modified.
+host bindings. Unrelated containers were not removed. The mistaken host-port
+suite reset their in-memory test data before the routing error was identified.
 
 No credential/session snapshots are saved in this evidence. Independent
 verification is required before the stage is reported complete.
