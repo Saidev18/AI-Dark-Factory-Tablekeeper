@@ -195,7 +195,7 @@ class ReplanTests(unittest.TestCase):
         before=self.snapshot();self.error(self.amend_series(series,clock='22:30')[0],422,'outside_opening_hours');self.assertEqual(before,self.snapshot())
         self.create(clock='20:30',day='2036-10-01',key='block')
         before=self.snapshot();self.error(self.amend_series(series,clock='20:00')[0],409,'table_unavailable');self.assertEqual(before,self.snapshot())
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(lambda i:self.amend_series(series,clock=['18:00','21:30'][i],key='race'+str(i))[0],range(2)))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(lambda i:self.amend_series(series,clock=['18:00','18:30'][i],key='race'+str(i))[0],range(2)))
         self.assertEqual(sorted(r[0] for r in results),[201,409]);self.error(next(r for r in results if r[0]==409),409,'stale_revision')
 
     def test_series_policy_adoption_and_nonoccupancy_error_order(self):
