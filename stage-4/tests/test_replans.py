@@ -122,7 +122,7 @@ class ReplanTests(unittest.TestCase):
     def test_stale_plan_permissions_validation_and_failed_key_reuse(self):
         self.error(self.preview(token=self.bob),403,'forbidden')
         self.error(http.request('POST','/restaurants/r/replans',self.closure(),key='p'),401,'unauthenticated')
-        for c in ({**self.closure(),'from':'2036-09-24T18:00:00'}, {**self.closure(),'to':self.closure()['from']}, {**self.closure(),'from':False}):self.error(self.preview(c),422,'validation_failed')
+        for c in ({**self.closure(),'from':'2036-09-24T18:00:00'}, {**self.closure(),'to':self.closure()['from']}, {**self.closure(),'from':False}, {**self.closure(),'from':'2036-09-24T18:00:00+02:60'}, {**self.closure(),'to':'2036-09-24T23:00:00+00:99'}):self.error(self.preview(c),422,'validation_failed')
         self.error(self.preview({**self.closure(),'table_id':'missing'}),404,'not_found')
         p=self.preview()[1];self.create()
         before=self.snapshot();self.error(self.apply(p),409,'stale_plan');self.assertEqual(before,self.snapshot())

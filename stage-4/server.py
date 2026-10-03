@@ -495,7 +495,7 @@ def closure_input(body, restaurant):
     for key in ("from", "to"):
         value = body.get(key)
         if not isinstance(value, str) or not re.fullmatch(
-                r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})", value):
+                r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])", value):
             fail()
         parse_timestamp(value)
     if parse_timestamp(body["from"]) >= parse_timestamp(body["to"]):
