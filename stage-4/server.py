@@ -585,6 +585,8 @@ def validate_plans(state, checked_record):
         assignments, bookings = preview["assignments"], plan["bookings"]
         if not isinstance(assignments, list) or not isinstance(bookings, list) or len(assignments) != len(bookings) or len(bookings) > 6:
             fail()
+        bounded_integer(preview["moved_count"], 0, len(bookings))
+        bounded_integer(preview["unused_seats"], 0)
         refs, candidates = [], []
         moved, unused = 0, 0
         for assignment, booking in zip(assignments, bookings):
@@ -596,7 +598,9 @@ def validate_plans(state, checked_record):
                 fail()
             if set(assignment) != {"reference", "table_ids", "changed"} or assignment["reference"] != booking["reference"] or type(assignment["changed"]) is not bool:
                 fail()
-            ids = canonical_tables(restaurant, assignment["table_ids"])
+            fields = validated_booking(state, rid, assignment["table_ids"], booking["starts_at_local"],
+                                       booking["party_size"], booking["accepted_terms"])
+            ids = fields["table_ids"]
             if ids != assignment["table_ids"] or assignment["changed"] != (set(ids) != set(table_ids(booking))):
                 fail()
             capacity = sum(booking["accepted_terms"]["capacities"][tid] for tid in ids)
@@ -606,6 +610,9 @@ def validate_plans(state, checked_record):
             unused += capacity - booking["party_size"]
             candidate = {**booking, "table_ids": ids}
             closure = {"restaurant_id": rid, **preview["closure"]}
+            if not (parse_timestamp(booking["starts_at"]) < parse_timestamp(closure["to"])
+                    and parse_timestamp(closure["from"]) < parse_timestamp(booking["ends_at"])):
+                fail()
             if closure_conflict({"closures": {}}, candidate, [closure]) or any(overlaps(candidate, prior) for prior in candidates):
                 fail()
             candidates.append(candidate)
@@ -975,6 +982,10 @@ def imported_state(body):
                     fail()
                 record = next((r for r in records if r["reference"] == ref), None)
                 if record is None or record["revision"] != entry["revision"] or not same_json(record["accepted_terms"], entry["accepted_terms"]):
+                    fail()
+        for ref, entries in state["histories"].items():
+            for entry in entries:
+                if entry["event"] == "reassigned" and state["mutation_sources"].get(ref, {}).get(str(entry["seq"]), {}).get("kind") != "replan":
                     fail()
         # Every agreement originates in a completed idempotent adoption. Its
         # immutable receipt identifies the anchor revision at adoption, so prior

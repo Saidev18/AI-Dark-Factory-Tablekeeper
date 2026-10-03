@@ -308,6 +308,24 @@ class ReplanTests(unittest.TestCase):
         self.assertEqual(self.snapshot()['state']['restaurant_revisions']['r'],before['state']['restaurant_revisions']['r']+1)
         self.assertEqual(http.request('POST','/_test/import',self.snapshot(),base=http.DESTINATION)[0],204)
 
+    def test_import_rejects_impossible_preview_and_unlinked_repair_atomically(self):
+        r=self.data['restaurants'][0]
+        r['tables'].append({'id':'t4','label':'Four','capacity':2});self.reset();self.create()
+        p=self.preview(self.closure(tid='t4'))[1];exported=self.snapshot()
+        self.assertEqual(http.request('POST','/_test/import',exported,base=http.DESTINATION)[0],204)
+        for field,value in (('table_ids',['t1','t2','t3']),('changed',True)):
+            invalid=copy.deepcopy(exported);plan=invalid['state']['plans'][p['plan_id']]['preview']
+            plan['assignments'][0][field]=value
+            if field=='table_ids':plan['assignments'][0]['changed']=True;plan['moved_count']=1;plan['unused_seats']=6
+            else:plan['moved_count']=1
+            for receipt in invalid['state']['receipts'].values():
+                if receipt['response'].get('plan_id')==p['plan_id']:receipt['response']=copy.deepcopy(plan)
+            self.error(http.request('POST','/_test/import',invalid,base=http.DESTINATION),422,'validation_failed');self.assertEqual(self.snapshot(http.DESTINATION),exported)
+        repaired=self.preview(key='repair')[1];self.assertEqual(self.apply(repaired)[0],201)
+        valid=self.snapshot();self.assertEqual(http.request('POST','/_test/import',valid,base=http.DESTINATION)[0],204)
+        invalid=copy.deepcopy(valid);invalid['state']['mutation_sources']={}
+        self.error(http.request('POST','/_test/import',invalid,base=http.DESTINATION),422,'validation_failed');self.assertEqual(self.snapshot(http.DESTINATION),valid)
+
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
