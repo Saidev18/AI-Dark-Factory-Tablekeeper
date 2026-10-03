@@ -360,6 +360,47 @@ class PolicyTests(unittest.TestCase):
             self.assertEqual(http.request('GET','/_test/export',base=http.DESTINATION)[1],exported)
 
 
+    def test_import_rejects_generated_exception_history_mismatch(self):
+        anchor,_=self.create();series=self.adopt(anchor)[1]
+        changed=series['occurrences'][1]['reservation']
+        self.amend(changed,{'party_size':1})
+        exported=self.snapshot()
+        self.assertEqual(http.request('POST','/_test/import',exported,base=http.DESTINATION)[0],204)
+        for index,flag in ((1,False),(2,True)):
+            invalid=copy.deepcopy(exported)
+            invalid['state']['series'][series['series_id']]['occurrences'][index]['exception']=flag
+            self.error(http.request('POST','/_test/import',invalid,base=http.DESTINATION),422,'validation_failed')
+            self.assertEqual(http.request('GET','/_test/export',base=http.DESTINATION)[1],exported)
+
+    def test_import_series_revision_bounds_preserve_valid_batches_and_anchor_history(self):
+        anchor,_=self.create()
+        anchor=self.amend(anchor,{'party_size':1})[1]
+        series=self.adopt(anchor,count=4)[1]
+        adopted=self.snapshot()
+        self.assertFalse(series['occurrences'][0]['exception'])
+        self.assertEqual(http.request('POST','/_test/import',adopted,base=http.DESTINATION)[0],204)
+        generated=[o['reservation'] for o in series['occurrences'][1:]]
+        moves={'moves':[{'reference':b['reference'],'party_size':2} for b in generated]}
+        self.assertEqual(http.request('POST','/reservation-moves',moves,self.token,'group')[0],201)
+        current=http.request('GET','/series/'+series['series_id'],token=self.token)[1]
+        self.assertEqual(current['revision'],2)
+        exported=self.snapshot()
+        self.assertEqual(http.request('POST','/_test/import',exported,base=http.DESTINATION)[0],204)
+        self.assertEqual(http.request('GET','/_test/export',base=http.DESTINATION)[1],exported)
+        for revision in (1,5):
+            invalid=copy.deepcopy(exported);invalid['state']['series'][series['series_id']]['revision']=revision
+            self.error(http.request('POST','/_test/import',invalid,base=http.DESTINATION),422,'validation_failed')
+            self.assertEqual(http.request('GET','/_test/export',base=http.DESTINATION)[1],exported)
+        for booking in generated:
+            http.request('POST','/reservations/'+booking['reference']+'/cancel',{},self.token)
+        cancelled=self.snapshot()
+        self.assertEqual(cancelled['state']['series'][series['series_id']]['revision'],5)
+        self.assertEqual(http.request('POST','/_test/import',cancelled,base=http.DESTINATION)[0],204)
+        invalid=copy.deepcopy(cancelled);invalid['state']['series'][series['series_id']]['revision']=4
+        self.error(http.request('POST','/_test/import',invalid,base=http.DESTINATION),422,'validation_failed')
+        self.assertEqual(http.request('GET','/_test/export',base=http.DESTINATION)[1],cancelled)
+
+
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     for name in ('source','destination','legacy1','legacy2'):parser.add_argument('--'+name,required=True)

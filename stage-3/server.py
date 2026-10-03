@@ -696,6 +696,7 @@ def imported_state(body):
         for token, uid in state["tokens"].items():
             if not token or uid not in state["users"]:
                 fail()
+        adoption_revisions = {}
         for scope, receipt in state["receipts"].items():
             uid, method, path, key = json.loads(scope)
             policy_path = re.fullmatch(r"/restaurants/([^/]+)/policies", path)
@@ -722,6 +723,10 @@ def imported_state(body):
                 for item, stored in zip(occurrences, series["occurrences"]):
                     if item["reference"] != stored["reference"] or item["index"] != stored["index"] or item["exception"] is not False:
                         fail()
+                sid = series["series_id"]
+                if sid in adoption_revisions:
+                    fail()
+                adoption_revisions[sid] = occurrences[0]["reservation"]["revision"]
                 responses = [o["reservation"] for o in occurrences]
             else:
                 responses = ([receipt["response"]] if path == "/reservations" else receipt["response"]["reservations"])
@@ -734,6 +739,34 @@ def imported_state(body):
                 checked_record(response, old="accepted_terms" not in response)
                 if response["status"] != "confirmed":
                     fail()
+        # Every agreement originates in a completed idempotent adoption. Its
+        # immutable receipt identifies the anchor revision at adoption, so prior
+        # anchor amendments are not mistaken for series mutations.
+        if set(adoption_revisions) != set(state["series"]):
+            fail()
+        for sid, series in state["series"].items():
+            anchor = state["reservations"][series["occurrences"][0]["reference"]]
+            adopted_revision = bounded_integer(adoption_revisions[sid], 1, anchor["revision"])
+            changes = []
+            cancellations = 0
+            for occurrence in series["occurrences"]:
+                entries = state["histories"][occurrence["reference"]]
+                post_adoption = (entries if occurrence["index"] else
+                                 [entry for entry in entries if entry["revision"] > adopted_revision])
+                changed_count = sum(entry["event"] == "changed" for entry in post_adoption)
+                if occurrence["exception"] != bool(changed_count):
+                    fail()
+                changes.append(changed_count)
+                cancellations += sum(entry["event"] == "cancelled" for entry in post_adoption)
+            # Each cancellation is individual. One collective move can change
+            # at most eight distinct occurrences, incrementing this series once.
+            # Histories don't record batch grouping; require the tight derivable
+            # bounds without rejecting a valid multi-occurrence batch export.
+            changed_operations_min = max(max(changes), (sum(changes) + 7) // 8)
+            minimum = 1 + cancellations + changed_operations_min
+            maximum = 1 + cancellations + sum(changes)
+            if not minimum <= series["revision"] <= maximum:
+                fail()
         return copy.deepcopy(state)
     except (APIError, KeyError, TypeError, ValueError, OverflowError, IndexError):
         fail()
