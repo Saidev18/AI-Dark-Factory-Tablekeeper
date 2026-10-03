@@ -7,7 +7,7 @@ let session = null;
 try { session = JSON.parse(localStorage.getItem('tablekeeper.session')); } catch (_) { /* A damaged local session starts signed out. */ }
 let results = null, selected = null, attempt = null, searchVersion = 0, bookingVersion = 0;
 const main = $('#main');
-const messages = {table_unavailable:'That seating option was just reserved. Choose another table or time below.',
+const messages = {table_unavailable:'That seating option was just reserved. Choose another available table or time.',
   party_exceeds_capacity:'This party is too large for the selected seating. Choose a larger option or adjust your party size.',
   cutoff_passed:'This reservation is too close to its start time to cancel.',
   unauthenticated:'Please sign in to continue.', not_found:'We couldn’t find a reservation with that reference for your account.',
