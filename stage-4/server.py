@@ -1468,6 +1468,68 @@ class Handler(BaseHTTPRequestHandler):
         # Avoid query strings, bearer tokens and private export bodies in logs.
         pass
 
+def maybe_seed_demo():
+    global STATE
+
+    if os.environ.get("AUTO_SEED_DEMO", "").lower() != "true":
+        return
+
+    if STATE["restaurants"]:
+        return
+
+    STATE = reset_state({
+        "users": [
+            {
+                "id": "u_ada",
+                "email": "ada@example.com",
+                "password": "correct horse",
+                "display_name": "Ada"
+            }
+        ],
+        "restaurants": [
+            {
+                "id": "r_anker",
+                "name": "Zum Anker",
+                "timezone": "Europe/Berlin",
+                "slot_minutes": 30,
+                "reservation_duration_minutes": 90,
+                "cancellation_cutoff_minutes": 120,
+                "opening_hours": [
+                    {"weekday": "mon", "opens": "18:00", "closes": "23:00"},
+                    {"weekday": "tue", "opens": "18:00", "closes": "23:00"},
+                    {"weekday": "wed", "opens": "18:00", "closes": "23:00"},
+                    {"weekday": "thu", "opens": "18:00", "closes": "23:00"},
+                    {"weekday": "fri", "opens": "18:00", "closes": "23:30"},
+                    {"weekday": "sat", "opens": "18:00", "closes": "23:30"},
+                    {"weekday": "sun", "opens": "18:00", "closes": "23:00"}
+                ],
+                "tables": [
+                    {
+                        "id": "t_1",
+                        "label": "Window Table",
+                        "capacity": 2
+                    },
+                    {
+                        "id": "t_2",
+                        "label": "Garden Table",
+                        "capacity": 4
+                    },
+                    {
+                        "id": "t_3",
+                        "label": "Family Table",
+                        "capacity": 6
+                    }
+                ],
+                "combinable": [
+                    ["t_1", "t_2"],
+                    ["t_2", "t_3"]
+                ]
+            }
+        ],
+        "reservations": []
+    })
+
+    print("Demo data auto-seeded", flush=True)
 
 class Server(ThreadingHTTPServer):
     request_queue_size = 128
@@ -1475,7 +1537,9 @@ class Server(ThreadingHTTPServer):
 
 
 if __name__ == "__main__":
+    maybe_seed_demo()
     port = int(os.environ.get("PORT", "8080"))
     server = Server(("0.0.0.0", port), Handler)
     print(f"Tablekeeper listening on 0.0.0.0:{port}", flush=True)
     server.serve_forever()
+
