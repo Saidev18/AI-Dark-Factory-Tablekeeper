@@ -97,10 +97,10 @@ The Stage 3 dark luxury customer experience is preserved in Stage 4.
 ## Running Stage 4
 
 From the stage-4 directory:
-
+```text
 docker build -t tablekeeper-stage-4 .
 docker run --rm -e PORT=8080 -p 8080:8080 tablekeeper-stage-4
-
+```text
 Then open:
 
 http://127.0.0.1:8080
