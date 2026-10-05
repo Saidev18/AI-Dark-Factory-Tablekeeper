@@ -12,6 +12,7 @@ The customer-facing interface uses a responsive dark luxury dining design.
 
 ## Repository Structure
 
+```text
 .
 ├── README.md
 ├── FACTORY.md
@@ -24,6 +25,7 @@ The customer-facing interface uses a responsive dark luxury dining design.
 ├── stage-2/
 ├── stage-3/
 └── stage-4/
+```
 
 Each stage-N directory is a standalone implementation of that stage and contains its own Dockerfile and RUN.md.
 
