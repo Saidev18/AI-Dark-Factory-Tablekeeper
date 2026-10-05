@@ -111,25 +111,28 @@ Each stage also contains its own RUN.md with stage-specific instructions.
 
 The implementation was validated with the official Tablekeeper harness in isolated mode.
 
-The final verification reported:
+### Final verification results
 
+```text
 Stage 1: 120/120
 Stage 2: 25/25
 Stage 3: 7/7
 Stage 4: 6/6
+```
 
 The final Stage 4 verification also included independent specification-derived probes, replanning tests, browser testing, offline-runtime checks and regression checks across all previous stages.
 
 Before submission, the repository is validated using:
-
+```text
 python -m harness check <repository> --track tablekeeper
-
+```
+```text
 python -m harness run \
   --track tablekeeper \
   --repo <repository> \
   --all \
   --mode isolated
-
+```
 ## AI Factory
 
 The project was built using three collaborating AI agents:
